@@ -38,11 +38,11 @@ end
 
 # @param [Baza::Token] token The token to start at
 # @param [File] file The file with a factbase
-# @param [String] name The name of the job
+# @param [String] jname The name of the job
 # @param [Array<String>] metas List of metas to add
 # @param [String] ip the IP of a sender
 # @return [Baza::Job] The job just started
-def job_start(token, file, name, metas, ip)
+def job_start(token, file, jname, metas, ip)
   max_file_size = 20 * 1024 * 1024
   if file.size > max_file_size
     raise Baza::Urror, "The uploaded file exceeds the maximum allowed size of #{max_file_size} bytes"
@@ -53,10 +53,10 @@ def job_start(token, file, name, metas, ip)
   rescue StandardError => e
     raise Baza::Urror, "Cannot parse the data, try to upload again: #{e.message.inspect}"
   end
-  raise Baza::Urror, "An existing job named '#{name}' is running now" if token.human.jobs.busy?(name)
+  raise Baza::Urror, "An existing job named '#{jname}' is running now" if token.human.jobs.busy?(jname)
   uuid = settings.fbs.save(file.path)
   token.start(
-    name, uuid,
+    jname, uuid,
     File.size(file.path),
     Baza::Errors.new(file.path).count,
     user_agent,
@@ -91,8 +91,8 @@ post '/push' do
   text = params[:token]
   raise Baza::Urror, 'The "token" form part is missing' if text.nil?
   token = the_human.tokens.find(text)
-  name = params[:name]
-  raise Baza::Urror, 'The "name" form part is missing' if name.nil?
+  jname = params[:jname]
+  raise Baza::Urror, 'The "jname" form part is missing' if jname.nil?
   Tempfile.open do |f|
     tfile = params[:factbase]
     if tfile.nil?
@@ -101,15 +101,15 @@ post '/push' do
       save_uploaded_file(tfile, f, request.env['HTTP_CONTENT_ENCODING'])
       File.delete(tfile[:tempfile])
     end
-    job = job_start(token, f, name, ['push:post'], request.ip)
+    job = job_start(token, f, jname, ['push:post'], request.ip)
     settings.loog.info("New push arrived via HTTP POST, job ID is ##{job.id}")
     flash(iri.cut('/jobs'), "New job ##{job.id} started")
   end
 end
 
 put(%r{/push/([a-z0-9-]+)}) do
-  name = params['captures'].first
-  the_human.locks.lock(name, params[:owner]) unless params[:owner].nil?
+  jname = params['captures'].first
+  the_human.locks.lock(jname, params[:owner]) unless params[:owner].nil?
   text = request.env['HTTP_X_ZEROCRACY_TOKEN']
   raise Baza::Urror, 'The "X-Zerocracy-Token" HTTP header with a token is missing' if text.nil?
   token = settings.humans.his_token(text)
@@ -122,7 +122,7 @@ put(%r{/push/([a-z0-9-]+)}) do
         request.body
       end
     File.binwrite(f, source.read)
-    job = job_start(token, f, name, ['push:put'], request.ip)
+    job = job_start(token, f, jname, ['push:put'], request.ip)
     settings.loog.info("New push arrived via HTTP PUT, job ID is #{job.id}")
     job.id.to_s
   end
@@ -137,13 +137,13 @@ end
 # A job with this name exists?
 get(%r{/exists/([a-z0-9-]+)}) do
   content_type('text/plain')
-  the_human.jobs.name_exists?(params['captures'].first) ? 'yes' : 'no'
+  the_human.jobs.jname_exists?(params['captures'].first) ? 'yes' : 'no'
 end
 
 # Read the output of this job.
 get(%r{/stdout/([0-9]+).txt}) do
   j = the_human.jobs.get(params['captures'].first.to_i)
-  the_human.locks.lock(j.name, params[:owner]) unless params[:owner].nil?
+  the_human.locks.lock(j.jname, params[:owner]) unless params[:owner].nil?
   r = j.result
   raise Baza::Urror, 'There is no result yet' if r.nil?
   content_type('text/plain')
@@ -153,7 +153,7 @@ end
 # Read the exit code of this job.
 get(%r{/exit/([0-9]+).txt}) do
   j = the_human.jobs.get(params['captures'].first.to_i)
-  the_human.locks.lock(j.name, params[:owner]) unless params[:owner].nil?
+  the_human.locks.lock(j.jname, params[:owner]) unless params[:owner].nil?
   r = j.result
   raise Baza::Urror, 'There is no result yet' if r.nil?
   content_type('text/plain')
@@ -163,14 +163,14 @@ end
 # The job is finished?
 get(%r{/finished/([0-9]+)}) do
   j = the_human.jobs.get(params['captures'].first.to_i)
-  the_human.locks.lock(j.name, params[:owner]) unless params[:owner].nil?
+  the_human.locks.lock(j.jname, params[:owner]) unless params[:owner].nil?
   content_type('text/plain')
   j.finished? ? 'yes' : 'no'
 end
 
 get(%r{/pull/([0-9]+).fb}) do
   j = the_human.jobs.get(params['captures'].first.to_i)
-  the_human.locks.lock(j.name, params[:owner]) unless params[:owner].nil?
+  the_human.locks.lock(j.jname, params[:owner]) unless params[:owner].nil?
   raise Baza::Urror, "The job ##{j.id} is expired" if j.expired?
   r = j.result
   raise Baza::Urror, 'There is no result as of yet' if r.nil?
@@ -178,19 +178,19 @@ get(%r{/pull/([0-9]+).fb}) do
   Tempfile.open do |f|
     settings.fbs.load(r.uri2, f.path)
     content_type('application/octet-stream')
-    response.headers['Content-Disposition'] = "attachment; filename=\"#{j.name}-output-#{j.id}.fb\""
+    response.headers['Content-Disposition'] = "attachment; filename=\"#{j.jname}-output-#{j.id}.fb\""
     File.binread(f.path)
   end
 end
 
 get(%r{/inspect/([0-9]+).fb}) do
   j = the_human.jobs.get(params['captures'].first.to_i)
-  the_human.locks.lock(j.name, params[:owner]) unless params[:owner].nil?
+  the_human.locks.lock(j.jname, params[:owner]) unless params[:owner].nil?
   raise Baza::Urror, "The job ##{j.id} is expired" if j.expired?
   Tempfile.open do |f|
     settings.fbs.load(j.uri1, f.path)
     content_type('application/octet-stream')
-    response.headers['Content-Disposition'] = "attachment; filename=\"#{j.name}-input-#{j.id}.fb\""
+    response.headers['Content-Disposition'] = "attachment; filename=\"#{j.jname}-input-#{j.id}.fb\""
     File.binread(f.path)
   end
 end

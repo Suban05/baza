@@ -150,24 +150,24 @@ class Baza::Jobs
     ).map { |row| row['name'] }
   end
 
-  def name_exists?(name)
+  def jname_exists?(jname)
     !pgsql.exec(
       'SELECT job.id FROM job ' \
       'JOIN token ON token.id = job.token ' \
-      'WHERE token.human = $1 AND job.name = $2 AND expired IS NULL ' \
+      'WHERE token.human = $1 AND job.jname = $2 AND expired IS NULL ' \
       'LIMIT 1',
-      [@human.id, name.downcase]
+      [@human.id, jname.downcase]
     ).empty?
   end
 
   # There is a job by this name that is running now and now yet finished?
-  def busy?(name)
+  def busy?(jname)
     !pgsql.exec(
       [
         'SELECT job.id FROM job',
         'JOIN token ON token.id = job.token',
         'LEFT JOIN result ON result.job = job.id',
-        'WHERE token.human = $1 AND job.name = $2 AND job.expired IS NULL',
+        'WHERE token.human = $1 AND job.jname = $2 AND job.expired IS NULL',
         'AND result.id IS NULL',
         'LIMIT 1'
       ],
@@ -176,16 +176,16 @@ class Baza::Jobs
   end
 
   # Get the most recent job (even if it's not finished yet or finished with error).
-  def recent(name)
+  def recent(jname)
     rows = pgsql.exec(
       'SELECT job.id FROM job ' \
       'JOIN token ON token.id = job.token ' \
-      'WHERE token.human = $1 AND job.name = $2 AND expired IS NULL ' \
+      'WHERE token.human = $1 AND job.jname = $2 AND expired IS NULL ' \
       'ORDER BY job.created DESC ' \
       'LIMIT 1',
       [@human.id, name.downcase]
     )
-    raise Baza::Urror, "No job by the name '#{name}' found" if rows.empty?
+    raise Baza::Urror, "No job by the name '#{jname}' found" if rows.empty?
     get(rows[0]['id'].to_i)
   end
 end

@@ -53,7 +53,7 @@ class Baza::Durables
     rows = pgsql.exec(
       [
         'SELECT durable.*, COUNT(job.id) AS jobs FROM durable',
-        'LEFT JOIN job ON job.name = durable.jname',
+        'LEFT JOIN job ON job.jname = durable.jname',
         'WHERE human = $1',
         'GROUP BY durable.id',
         'ORDER BY durable.file',

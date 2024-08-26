@@ -101,7 +101,7 @@ class Baza::JobsTest < Minitest::Test
     second = token.start("#{fake_name}-b", fake_name, 1, 0, 'n/a', [], '192.168.1.1')
     second.finish!(fake_name, 'stdout', 1, 100)
     third = token.start(name, fake_name, 1, 0, 'n/a', [], '192.168.1.1')
-    assert(human.jobs.name_exists?(name))
+    assert(human.jobs.jname_exists?(name))
     assert_equal(third.id, human.jobs.recent(name).id)
   end
 

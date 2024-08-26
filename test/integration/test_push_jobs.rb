@@ -40,7 +40,7 @@ class Baza::PushJobsTest < Minitest::Test
     job_name = fake_name
     fill_in 'name', with: job_name
     click_button 'Start'
-    assert human.jobs.name_exists?(job_name)
+    assert human.jobs.jname_exists?(job_name)
     assert human.jobs.busy?(job_name)
     assert_current_path '/jobs'
   end
@@ -62,7 +62,7 @@ class Baza::PushJobsTest < Minitest::Test
       file = Rack::Test::UploadedFile.new(f.path, 'application/zip')
       attach_file('factbase', file.path)
       click_button 'Start'
-      assert human.jobs.name_exists?(job_name)
+      assert human.jobs.jname_exists?(job_name)
       assert human.jobs.busy?(job_name)
       assert_current_path '/jobs'
     end
@@ -83,7 +83,7 @@ class Baza::PushJobsTest < Minitest::Test
       file = Rack::Test::UploadedFile.new(f.path, 'text/plain')
       attach_file('factbase', file.path)
       click_button 'Start'
-      assert !human.jobs.name_exists?(job_name)
+      assert !human.jobs.jname_exists?(job_name)
       assert_current_path '/dash'
     end
   end
@@ -96,7 +96,7 @@ class Baza::PushJobsTest < Minitest::Test
     job_name = fake_name
     fill_in 'name', with: job_name
     click_button 'Start'
-    assert !human.jobs.name_exists?(job_name)
+    assert !human.jobs.jname_exists?(job_name)
     assert !human.jobs.busy?(job_name)
     assert_current_path '/dash'
   end
@@ -109,7 +109,7 @@ class Baza::PushJobsTest < Minitest::Test
     job_name = fake_name
     fill_in 'name', with: job_name
     click_button 'Start'
-    assert !human.jobs.name_exists?(job_name)
+    assert !human.jobs.jname_exists?(job_name)
     assert !human.jobs.busy?(job_name)
     assert_current_path '/dash'
   end
@@ -151,7 +151,7 @@ class Baza::PushJobsTest < Minitest::Test
     job_name = fake_name
     fill_in 'name', with: job_name
     click_button 'Start'
-    assert human.jobs.name_exists?(job_name)
+    assert human.jobs.jname_exists?(job_name)
     assert human.jobs.busy?(job_name)
     assert_current_path '/jobs'
 
